@@ -6,6 +6,6 @@ typedef struct FSCTL_OPTION_TYPE {
     void (* const call)(void);
 } fsctl_option_t;
 
-extern fsctl_option_t FscOption;
+extern fsctl_option_t fscOption;
 
 #endif /** __FILEUUID74e536001fc640d4b7305076a273b83d */

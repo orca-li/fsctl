@@ -14,7 +14,7 @@ static int SetupLogger(void)
 
 static int SetupInfo(char **argv)
 {
-    FscGetInfo.program.path = argv[0];
+    fscGetInfo.program.path = argv[0];
 
     return EXIT_SUCCESS;
 }
@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
 {
     SetupLogger();
     SetupInfo(argv);
-    FscOption.getting(argc, argv);
-    FscOption.call();
+    fscOption.getting(argc, argv);
+    fscOption.call();
     exit(EXIT_SUCCESS);
 }

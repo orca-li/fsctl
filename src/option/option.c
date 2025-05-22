@@ -1,9 +1,14 @@
 #include "public.h"
 #include "logger.h"
 #include "get_info.h"
+#include "public/vfs.h"
 
 #include <getopt.h>
 #include <string.h>
+
+#define s_option_help 'h'
+#define l_option_help "help"
+
 
 typedef struct FSCTL_OPTION_TYPE
 {
@@ -11,6 +16,7 @@ typedef struct FSCTL_OPTION_TYPE
     int (*const getting)(int argc, char **argv);
     void (*call)(void);
     // protected
+    const char *input_image;
     volatile int const main_line;
     // private
     void (*const set_main_line)(int line);
@@ -23,49 +29,56 @@ static void PrintVersionOption(void);
 static void SetMainLine(int line);
 static int CheckMainLine(void);
 
-fsctl_option_t FscOption = {
+fsctl_option_t fscOption = {
+    // pbulic
     .getting = GettingOptions,
     .call = NULL,
+    // protected
+    .input_image = NULL,
     .main_line = 0,
+    // private
     .set_main_line = SetMainLine,
     .check_main_line = CheckMainLine,
 };
 
+
+
 static void SetMainLine(int line)
 {
-    if (FscOption.main_line == 0)
+    if (fscOption.main_line == 0)
     {
-        *(int *)&FscOption.main_line = line;
+        *(int *)&fscOption.main_line = line;
         return;
     }
 
-    fscLogger.warning("There can only be one main line. The new line is ignored. Current line: -%c. The line is rejected: -%c\n", FscOption.main_line, line);
+    fscLogger.warning("There can only be one main line. The new line is ignored. Current line: -%c. The line is rejected: -%c", fscOption.main_line, line);
 }
 
 static int CheckMainLine(void)
 {
-    if (FscOption.main_line != 0)
-        return FscOption.main_line;
+    if (fscOption.main_line != 0)
+        return fscOption.main_line;
 
-    fscLogger.error("Select the main line: -h, -v or other options\n");
+    fscLogger.error("Select the main line: -h, -v or other options");
     exit(EXIT_FAILURE);
 }
 
 static void PrintHelpOption(void)
 {
-    printf("Usage: %s [options]\n", FscGetInfo.program.path);
-    printf("Options:\n");
-    printf("  -h, --help\t\t\t\tDisplay this help message and exit.\n");
-    printf("  -v, --version\t\t\t\tDisplay version information and exit.\n");
-    printf("\n");
-    printf("Example:\n");
-    printf("  %s --help\n", FscGetInfo.program.name);
-    printf("  %s --version\n", FscGetInfo.program.name);
+    fscLogger.print("Usage: %s [options]\n", fscGetInfo.program.path);
+    fscLogger.print("Options:\n");
+    fscLogger.print("  -h, --help\t\t\t\tDisplay this help message and exit.\n");
+    fscLogger.print("  -v, --version\t\t\t\tDisplay version information and exit.\n");
+    fscLogger.print("  -i, --image\t\t\t\tSet the path to the file system image.\n");
+    fscLogger.print("\n");
+    fscLogger.print("Example:\n");
+    fscLogger.print("  %s --help\n", fscGetInfo.program.name);
+    fscLogger.print("  %s --version\n", fscGetInfo.program.name);
 }
 
 static void PrintVersionOption(void)
 {
-    printf("=== Version %s ===\nCopyright (C) %d %s. All rights reserved.\n", FscGetInfo.version.string, FscGetInfo.version.year, FscGetInfo.program.vendor);
+    fscLogger.print("=== Version %s ===\nCopyright (C) %d %s. All rights reserved.\n", fscGetInfo.version.string, fscGetInfo.version.year, fscGetInfo.program.vendor);
 }
 
 static int GettingOptions(int argc, char **argv)
@@ -74,42 +87,67 @@ static int GettingOptions(int argc, char **argv)
     int option_index = 0;
 
     static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'},
+        {l_option_help, no_argument, 0, s_option_help},
         {"version", no_argument, 0, 'v'},
+        {"image", required_argument, 0, 'i'},
+        {"list", no_argument, 0, 'l'},
+        {"path", required_argument, 0, 'p'},
+        {"verbose", no_argument, 0, 'V'},
         {0, 0, 0, 0}};
 
-    while ((opt = getopt_long(argc, argv, "hv", long_options, &option_index)) != -1)
+    // setting default settings
+    fscVfs.select_fs(fsc_vfs_fat32);
+
+    // setting user settings
+    while ((opt = getopt_long(argc, argv, "hvi:lp:V", long_options, &option_index)) != -1)
     {
         switch (opt)
         {
         // Main options
-        case 'h':
+        case s_option_help:
         case 'v':
-            FscOption.set_main_line(opt);
+        case 'l':
+            fscOption.set_main_line(opt);
+            break;
+        case 'i':
+            fscOption.input_image = optarg;
+            fscVfs.mount();
+            break;
+        case 'p':
+            fscVfs.path = optarg;
+            break;
+        case 'V':
+            fscLogger.flags.verbose = true;
             break;
         case '?':
-            fscLogger.error("Invalid option: %c(%02hhx)\n", opt, opt);
-            fscLogger.info("Usage: %s --help\n", FscGetInfo.program.path);
+            fscLogger.error("Invalid option: %c(%02hhx)", opt, opt);
+            fscLogger.info("Usage: %s --help", fscGetInfo.program.path);
             exit(EXIT_FAILURE);
 
         default:
-            fscLogger.error("Unexpected error while processing options\n");
+            fscLogger.error("Unexpected error while processing options");
             exit(EXIT_FAILURE);
         }
     }
 
-    switch (FscOption.check_main_line())
+    // setting new options
+
+    switch (fscOption.check_main_line())
     {
     case 'v':
-        FscOption.call = PrintVersionOption;
+        fscOption.call = PrintVersionOption;
         break;
     case 'h':
-        FscOption.call = PrintHelpOption;
+        fscOption.call = PrintHelpOption;
+        break;
+    case 'l':
+        fscOption.call = fscVfs.list;
         break;
 
     default:
-        fscLogger.error("Unknown program line: %c", FscOption.main_line);
+        fscLogger.error("Unknown program line: %c", fscOption.main_line);
         exit(EXIT_FAILURE);
     }
+
     return EXIT_SUCCESS;
 }

@@ -30,7 +30,7 @@ typedef struct FSCTL_GETINFO_TYPE {
     fsctl_getinfo_version_t version;
 } fsctl_getinfo_t;
 
-fsctl_getinfo_t FscGetInfo = {
+fsctl_getinfo_t fscGetInfo = {
     .program = {
         .name = "fsctl",
         .path = NULL,

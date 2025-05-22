@@ -1,15 +1,21 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdbool.h>
 #include "public.h"
 
 typedef struct FSCTL_LOGGER_TYPE
 {
     // public
-    int (*print)(const char *format, ...);
-    int (*info)(const char *format, ...);
-    int (*warning)(const char *format, ...);
-    int (*error)(const char *format, ...);
+    struct FSCTL_LOGGER_FLAGS_TYPE {
+        bool verbose:1;
+    } flags;
+
+    int (* print)(const char *format, ...);
+    int (* info)(const char *format, ...);
+    int (* warning)(const char *format, ...);
+    int (* error)(const char *format, ...);
+    int (* verbose)(const char *format, ...);
     // private
     FILE *output;
     FILE *input;
@@ -19,13 +25,21 @@ static int Print(const char *format, ...);
 static int PrintInfo(const char *format, ...);
 static int PrintWarning(const char *format, ...);
 static int PrintError(const char *format, ...);
+static int PrintVerbose(const char *format, ...);
 static int Print(const char *format, ...);
 
 fsctl_logger_t fscLogger = {
+    // public
+    .flags = {
+        .verbose = false,
+    },
+
     .print = Print,
     .info = PrintInfo,
     .warning = PrintWarning,
     .error = PrintError,
+    .verbose = PrintVerbose,
+    // private
     .output = NULL,
     .input = NULL,
 };
@@ -64,7 +78,7 @@ static int PrintTagged(const char *tag, const char *format, va_list args)
         return -1;
     }
 
-    result = fprintf(fscLogger.output, "%s", buffer);
+    result = fprintf(fscLogger.output, "%s\n", buffer);
     free(buffer);
 
     return result;
@@ -92,6 +106,18 @@ static int PrintError(const char *format, ...)
     va_list args;
     va_start(args, format);
     int result = PrintTagged("[ERROR] ", format, args);
+    va_end(args);
+    return result;
+}
+
+static int PrintVerbose(const char *format, ...)
+{
+    if (fscLogger.flags.verbose == false)
+        return -1;
+
+    va_list args;
+    va_start(args, format);
+    int result = PrintTagged("[VERBOSE] ", format, args);
     va_end(args);
     return result;
 }

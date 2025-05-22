@@ -20,6 +20,6 @@ typedef struct FSCTL_GETINFO_TYPE {
     fsctl_getinfo_version_t version;
 } fsctl_getinfo_t;
 
-extern fsctl_getinfo_t FscGetInfo;
+extern fsctl_getinfo_t fscGetInfo;
 
 #endif /** __FILEUUID56d34cd91fb64475a7400f58a3fb7b46 */
