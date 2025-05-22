@@ -1,8 +1,8 @@
 #include <stdio.h>
+#define FSC_INC_OBJECTS_LOGGER_PROTECTED
+#include "objects.h"
 #include "public.h"
-#include "option.h"
-#include "logger.h"
-#include "get_info.h"
+
 
 static int SetupLogger(void)
 {

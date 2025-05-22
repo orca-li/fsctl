@@ -2,24 +2,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
+#define FSC_INC_OBJECTS_LOGGER_PRIVATE
+#include "objects.h"
 #include "public.h"
-
-typedef struct FSCTL_LOGGER_TYPE
-{
-    // public
-    struct FSCTL_LOGGER_FLAGS_TYPE {
-        bool verbose:1;
-    } flags;
-
-    int (* print)(const char *format, ...);
-    int (* info)(const char *format, ...);
-    int (* warning)(const char *format, ...);
-    int (* error)(const char *format, ...);
-    int (* verbose)(const char *format, ...);
-    // private
-    FILE *output;
-    FILE *input;
-} fsctl_logger_t;
 
 static int Print(const char *format, ...);
 static int PrintInfo(const char *format, ...);
@@ -57,15 +42,11 @@ static int PrintTagged(const char *tag, const char *format, va_list args)
     va_end(args_copy);
 
     if (required_size < 0)
-    {
         return -1;
-    }
 
     buffer = (char *)malloc(tag_len + required_size + nullterm);
     if (buffer == NULL)
-    {
         return -1;
-    }
 
     memcpy(buffer, tag, tag_len);
     buffer[tag_len] = '\0';

@@ -1,4 +1,6 @@
+#define FSC_INC_OBJECTS_GETINFO_PRIVATE
 #include "public.h"
+#include "objects.h"
 
 #define VENDOR_NAME "Orcali"
 #define VERSION_YEAR 2025u
@@ -10,25 +12,6 @@
 #else
 #define VERSION_STRING TO_STRING(VERSION_MAJOR.VERSION_MINOR)
 #endif
-
-typedef struct FSCTL_GETINFO_PROGRAM_TYPE {
-    const char * const name;
-    const char * path;
-    const char * const vendor;
-} fsctl_getinfo_program_t;
-
-typedef struct FSCTL_GETINFO_VERSION_TYPE {
-    const int year;
-    const char * const string;
-    const int major;
-    const int minor;
-    const int patch;
-} fsctl_getinfo_version_t;
-
-typedef struct FSCTL_GETINFO_TYPE {
-    fsctl_getinfo_program_t program;
-    fsctl_getinfo_version_t version;
-} fsctl_getinfo_t;
 
 fsctl_getinfo_t fscGetInfo = {
     .program = {

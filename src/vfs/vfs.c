@@ -1,22 +1,7 @@
 #include <stdlib.h>
-#include "public/vfs_types.h"
-#include "public/fat32.h"
-#include "logger.h"
-
-typedef struct FSCTL_VFS_TYPE
-{
-    // public
-    const char *path;
-    void (* const list)(void);
-    int (* const select_fs)(enum fsc_vfs_fs_t fs);
-    void (* const mount)(void);
-    // protected
-    void (*list_link)(const char *path);
-    void (*mount_link)(void);
-    enum fsc_vfs_fs_t current_fs;
-    // private
-    const char *pwd;
-} fsc_vfs_t;
+#define FSC_INC_OBJECTS_VFS_PRIVATE
+#include "objects.h"
+#include "public.h"
 
 static void VfsMount(void);
 static int SelectFileSystem(enum fsc_vfs_fs_t fs);

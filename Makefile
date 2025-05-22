@@ -40,7 +40,8 @@ EXECUTABLE := $(BUILD_DIR)/$(PROJECT_NAME)
 INCLUDE_DIRS := $(shell find $(INC_DIR) -type d)
 
 # Include path
-INC := $(addprefix -I,$(INCLUDE_DIRS))
+# INC := $(addprefix -I,$(INCLUDE_DIRS))
+INC := -I"inc"
 
 # Define a variable for running test
 TEST_COMMAND := $(BUILD_DIR)/test

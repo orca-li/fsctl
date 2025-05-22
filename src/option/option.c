@@ -1,27 +1,21 @@
-#include "public.h"
-#include "logger.h"
-#include "get_info.h"
-#include "public/vfs.h"
-
 #include <getopt.h>
 #include <string.h>
+#define FSC_INC_OBJECTS_OPTION_PRIVATE
+#include "public.h"
+#include "objects.h"
 
 #define s_option_help 'h'
 #define l_option_help "help"
-
-
-typedef struct FSCTL_OPTION_TYPE
-{
-    // public
-    int (*const getting)(int argc, char **argv);
-    void (*call)(void);
-    // protected
-    const char *input_image;
-    volatile int const main_line;
-    // private
-    void (*const set_main_line)(int line);
-    int (*const check_main_line)(void);
-} fsctl_option_t;
+#define s_option_version 'v'
+#define l_option_version "version"
+#define s_option_image 'i'
+#define l_option_image "image"
+#define s_option_list 'l'
+#define l_option_list "list"
+#define s_option_path 'p'
+#define l_option_path "path"
+#define s_option_verbose 'V'
+#define l_option_verbose "verbose"
 
 static int GettingOptions(int argc, char **argv);
 static void PrintHelpOption(void);
@@ -30,7 +24,7 @@ static void SetMainLine(int line);
 static int CheckMainLine(void);
 
 fsctl_option_t fscOption = {
-    // pbulic
+    // public
     .getting = GettingOptions,
     .call = NULL,
     // protected
@@ -40,8 +34,6 @@ fsctl_option_t fscOption = {
     .set_main_line = SetMainLine,
     .check_main_line = CheckMainLine,
 };
-
-
 
 static void SetMainLine(int line)
 {
@@ -65,15 +57,20 @@ static int CheckMainLine(void)
 
 static void PrintHelpOption(void)
 {
-    fscLogger.print("Usage: %s [options]\n", fscGetInfo.program.path);
+    fscLogger.print("Usage: %s [primary] [-f[flags]] [options]\n", fscGetInfo.program.path);
+    fscLogger.print("Primary:\n");
+    fscLogger.print("  -%c, --%s\t\t\t\tDisplay this help message and exit.\n", s_option_help, l_option_help);
+    fscLogger.print("  -%c, --%s\t\t\t\tDisplay version information and exit.\n", s_option_version, l_option_version);
+    fscLogger.print("  -%c [-i<img>], --%s [-i<img>]\tDisplay a list of directories.\n", s_option_list, l_option_list);
+    fscLogger.print("\n");
+    fscLogger.print("Flags:\n");
+    fscLogger.print("\n");
     fscLogger.print("Options:\n");
-    fscLogger.print("  -h, --help\t\t\t\tDisplay this help message and exit.\n");
-    fscLogger.print("  -v, --version\t\t\t\tDisplay version information and exit.\n");
-    fscLogger.print("  -i, --image\t\t\t\tSet the path to the file system image.\n");
+    fscLogger.print("  -%c, --%s\t\t\t\tSet the path to the file system image.\n", s_option_path, l_option_path);
+    fscLogger.print("  -%c, --%s\t\t\t\tEnable verbose output\n", s_option_verbose, l_option_verbose);
     fscLogger.print("\n");
     fscLogger.print("Example:\n");
-    fscLogger.print("  %s --help\n", fscGetInfo.program.name);
-    fscLogger.print("  %s --version\n", fscGetInfo.program.name);
+    fscLogger.print("  %s -%c%c -%c <img>\n", fscGetInfo.program.name, s_option_verbose, s_option_list, s_option_image);
 }
 
 static void PrintVersionOption(void)
@@ -88,11 +85,11 @@ static int GettingOptions(int argc, char **argv)
 
     static struct option long_options[] = {
         {l_option_help, no_argument, 0, s_option_help},
-        {"version", no_argument, 0, 'v'},
-        {"image", required_argument, 0, 'i'},
-        {"list", no_argument, 0, 'l'},
-        {"path", required_argument, 0, 'p'},
-        {"verbose", no_argument, 0, 'V'},
+        {l_option_version, no_argument, 0, s_option_version},
+        {l_option_image, required_argument, 0, s_option_image},
+        {l_option_list, no_argument, 0, s_option_list},
+        {l_option_path, required_argument, 0, s_option_path},
+        {l_option_verbose, no_argument, 0, s_option_verbose},
         {0, 0, 0, 0}};
 
     // setting default settings
@@ -105,18 +102,18 @@ static int GettingOptions(int argc, char **argv)
         {
         // Main options
         case s_option_help:
-        case 'v':
-        case 'l':
+        case s_option_version:
+        case s_option_list:
             fscOption.set_main_line(opt);
             break;
-        case 'i':
+        case s_option_image:
             fscOption.input_image = optarg;
             fscVfs.mount();
             break;
-        case 'p':
+        case s_option_path:
             fscVfs.path = optarg;
             break;
-        case 'V':
+        case s_option_verbose:
             fscLogger.flags.verbose = true;
             break;
         case '?':
@@ -130,17 +127,15 @@ static int GettingOptions(int argc, char **argv)
         }
     }
 
-    // setting new options
-
     switch (fscOption.check_main_line())
     {
-    case 'v':
+    case s_option_version:
         fscOption.call = PrintVersionOption;
         break;
-    case 'h':
+    case s_option_help:
         fscOption.call = PrintHelpOption;
         break;
-    case 'l':
+    case s_option_list:
         fscOption.call = fscVfs.list;
         break;
 

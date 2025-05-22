@@ -1,21 +1,11 @@
-#include "fs/fat.h"
-#include "logger.h"
-#include "fscio.h"
-#include "protected/option.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <wchar.h>
-
-typedef struct FSCTL_FAT32_HANDLER_TYPE
-{
-    // public
-    void (*mount)(void);
-    void (*list)(const char *path);
-    void (*umount)(void);
-    // protected
-    // private
-} fsc_fat32_handler_t;
+#define FSC_INC_OBJECTS_FAT32_PRIVATE
+#define FSC_INC_OBJECTS_OPTION_PROTECTED
+#include "objects.h"
+#include "public.h"
 
 static void HandleMount(void);
 static void HandleList(const char *path);
