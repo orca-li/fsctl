@@ -96,17 +96,13 @@ static void FormatShortName(const uint8_t fat_name[11], char *output)
 {
     int pos = 0;
     for (int i = 0; i < 8 && fat_name[i] != ' '; i++)
-    {
         output[pos++] = fat_name[i];
-    }
 
     if (fat_name[8] != ' ')
     {
         output[pos++] = '.';
         for (int i = 8; i < 11 && fat_name[i] != ' '; i++)
-        {
             output[pos++] = fat_name[i];
-        }
     }
     output[pos] = '\0';
 }
@@ -151,6 +147,46 @@ static bool BuildLFNName(fscFatLongDir_t *lfn_chain, int count, const uint8_t *s
     return true;
 }
 
+static bool ReadDirectoryEntry(fscFatDir_t *dir_entry)
+{
+    return (fread(dir_entry, sizeof(*dir_entry), 1, fscIO.image.handler) == 1);
+}
+
+static bool ShouldSkipEntry(const fscFatDir_t *dir_entry)
+{
+    return (dir_entry->Name[0] == FSC_FAT_DIR_EOD) ||
+           (dir_entry->Name[0] == FSC_FAT_DIR_FREE || dir_entry->Name[0] == 0xE5) ||
+           (dir_entry->Name[0] == '.');
+}
+
+static void HandleLFNEntry(const fscFatDir_t *dir_entry, fscFatLongDir_t *lfn_chain, int *lfn_count)
+{
+    if (*lfn_count < 20)
+        memcpy(&lfn_chain[(*lfn_count)++], dir_entry, sizeof(fscFatLongDir_t));
+}
+
+static void FormatFileName(const fscFatDir_t *dir_entry, fscFatLongDir_t *lfn_chain, int lfn_count, char *display_name)
+{
+    if (!(lfn_count > 0 && BuildLFNName(lfn_chain, lfn_count, dir_entry->Name, display_name)))
+        FormatShortName(dir_entry->Name, display_name);
+}
+
+static void PrintFileInfo(const fscFatDir_t *dir_entry, const char *display_name, char *datetime)
+{
+    if (fscOption.flags.list.fmtlong)
+    {
+        FormatDateTime(dir_entry->WrtDate, dir_entry->WrtTime, datetime, 20);
+
+        fscLogger.print("%5u %5s %s %-15s\n",
+                        dir_entry->FileSize,
+                        FormatAttributes(dir_entry->Attr),
+                        datetime,
+                        display_name);
+    }
+    else
+        fscLogger.print("%s ", display_name);
+}
+
 static void HandleList(const char *path)
 {
     (void)path;
@@ -160,43 +196,29 @@ static void HandleList(const char *path)
     char display_name[256];
     char datetime[20];
 
-    while (fread(&dir_entry, sizeof(dir_entry), 1, fscIO.image.handler) == 1)
+    while (ReadDirectoryEntry(&dir_entry))
     {
-        if (dir_entry.Name[0] == FSC_FAT_DIR_EOD)
-            break;
-
-        if (dir_entry.Name[0] == FSC_FAT_DIR_FREE || dir_entry.Name[0] == 0xE5)
+        if (ShouldSkipEntry(&dir_entry))
+        {
+            if (dir_entry.Name[0] == FSC_FAT_DIR_EOD)
+                break;
             continue;
+        }
 
         if (dir_entry.Attr == FSC_FAT_ATTR_LONG_NAME)
         {
-            if (lfn_count < 20)
-            {
-                memcpy(&lfn_chain[lfn_count++], &dir_entry, sizeof(fscFatLongDir_t));
-            }
+            HandleLFNEntry(&dir_entry, lfn_chain, &lfn_count);
             continue;
         }
 
-        if (lfn_count > 0 && BuildLFNName(lfn_chain, lfn_count, dir_entry.Name, display_name))
-        {
-        }
-        else
-        {
-            FormatShortName(dir_entry.Name, display_name);
-        }
+        FormatFileName(&dir_entry, lfn_chain, lfn_count, display_name);
         lfn_count = 0;
 
-        if (display_name[0] == '.')
-            continue;
-
-        FormatDateTime(dir_entry.WrtDate, dir_entry.WrtTime, datetime, sizeof(datetime));
-
-        fscLogger.print("%5u %5s %s %-15s\n",
-                        dir_entry.FileSize,
-                        FormatAttributes(dir_entry.Attr),
-                        datetime,
-                        display_name);
+        PrintFileInfo(&dir_entry, display_name, datetime);
     }
+
+    if (!fscOption.flags.list.fmtlong)
+        fscLogger.print("\n");
 }
 
 bool VerifyChecksum(const char *shortName, uint8_t checksum)
